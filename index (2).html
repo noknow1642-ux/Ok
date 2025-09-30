@@ -1,0 +1,1039 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Getitech - Free All-in-One Toolkit</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <!-- TailwindCSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- React & ReactDOM CDN -->
+  <script src="https://unpkg.com/react@18.2.0/umd/react.development.js"></script>
+  <script src="https://unpkg.com/react-dom@18.2.0/umd/react-dom.development.js"></script>
+  <!-- Babel for JSX -->
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <!-- PDF-lib for PDF tools -->
+  <script src="https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
+  <!-- browser-image-compression -->
+  <script src="https://cdn.jsdelivr.net/npm/browser-image-compression@2.0.2/dist/browser-image-compression.js"></script>
+  <!-- QR code styling -->
+  <script src="https://cdn.jsdelivr.net/npm/qr-code-styling/lib/qr-code-styling.js"></script>
+  <!-- Color Picker (react-colorful) - use via CDN/Vanilla, so we'll implement a custom one -->
+  <style>
+    /* Custom scrollbar for sidebar */
+    ::-webkit-scrollbar { width: 8px; }
+    ::-webkit-scrollbar-thumb { background: #e5e7eb; border-radius: 6px; }
+    ::-webkit-scrollbar-track { background: #f3f4f6; }
+  </style>
+</head>
+<body class="bg-gray-50">
+<div id="root"></div>
+<script type="text/babel">
+
+const { useState, useEffect, useRef } = React;
+
+// ------------- TOOL DEFINITIONS -----------------
+const TOOLS = [
+  // TEXT TOOLS
+  { id: 'word-counter', name: 'Word Counter', category: 'Text Tools', },
+  { id: 'character-counter', name: 'Character Counter', category: 'Text Tools', },
+  { id: 'case-converter', name: 'Case Converter', category: 'Text Tools', },
+  { id: 'text-reverser', name: 'Text Reverser', category: 'Text Tools', },
+  { id: 'line-sorter', name: 'Line Sorter', category: 'Text Tools', },
+  { id: 'duplicate-line-remover', name: 'Duplicate Line Remover', category: 'Text Tools', },
+
+  // PDF TOOLS
+  { id: 'pdf-merge', name: 'Merge PDF', category: 'PDF Tools', },
+  { id: 'pdf-split', name: 'Split PDF', category: 'PDF Tools', },
+  { id: 'pdf-convert', name: 'Convert PDF', category: 'PDF Tools', },
+
+  // IMAGE TOOLS
+  { id: 'image-resizer', name: 'Image Resizer', category: 'Image Tools', },
+  { id: 'image-compressor', name: 'Image Compressor', category: 'Image Tools', },
+  { id: 'background-remover', name: 'Background Remover', category: 'Image Tools', },
+  { id: 'image-filters', name: 'Image Filters', category: 'Image Tools', },
+
+  // CALCULATORS
+  { id: 'age-calculator', name: 'Age Calculator', category: 'Calculators', },
+  { id: 'bmi-calculator', name: 'BMI Calculator', category: 'Calculators', },
+  { id: 'loan-calculator', name: 'Loan Calculator', category: 'Calculators', },
+  { id: 'percentage-calculator', name: 'Percentage Calculator', category: 'Calculators', },
+  { id: 'discount-calculator', name: 'Discount Calculator', category: 'Calculators', },
+  { id: 'tip-calculator', name: 'Tip Calculator', category: 'Calculators', },
+
+  // WEB TOOLS
+  { id: 'qr-code-generator', name: 'QR Code Generator', category: 'Web Tools', },
+  { id: 'password-generator', name: 'Password Generator', category: 'Web Tools', },
+  { id: 'meta-tags-generator', name: 'Meta Tags Generator', category: 'Web Tools', },
+  { id: 'url-encoder-decoder', name: 'URL Encoder/Decoder', category: 'Web Tools', },
+  { id: 'base64-encoder-decoder', name: 'Base64 Encoder/Decoder', category: 'Web Tools', },
+  { id: 'json-formatter', name: 'JSON Formatter', category: 'Web Tools', },
+
+  // CONVERTERS
+  { id: 'unit-converter', name: 'Unit Converter', category: 'Converters', },
+
+  // COLOR TOOLS
+  { id: 'color-picker', name: 'Color Picker', category: 'Color Tools', },
+  { id: 'gradient-generator', name: 'Gradient Generator', category: 'Color Tools', },
+  { id: 'palette-generator', name: 'Color Palette Generator', category: 'Color Tools', },
+
+  // UTILITY TOOLS
+  { id: 'stopwatch', name: 'Stopwatch', category: 'Utility Tools', },
+  { id: 'timer', name: 'Timer', category: 'Utility Tools', },
+];
+
+// ------------- UI COMPONENTS -----------------
+
+function Sidebar({ categories, tools, currentTool, setCurrentTool, search, setSearch }) {
+  return (
+    <aside className="w-full md:w-64 bg-white border-r border-gray-200 h-full flex-shrink-0 overflow-y-auto pt-6 pb-4 px-4">
+      <h2 className="text-2xl font-bold mb-4 text-indigo-700 text-center">Getitech</h2>
+      <input
+        type="text"
+        placeholder="Search tools..."
+        value={search}
+        onChange={e => setSearch(e.target.value)}
+        className="w-full mb-5 px-3 py-2 border rounded focus:outline-none focus:border-indigo-500"
+      />
+      {categories.map(cat => (
+        <div key={cat} className="mb-4">
+          <div className="font-semibold text-gray-600 mb-2">{cat}</div>
+          <div>
+            {tools
+              .filter(t => t.category === cat && t.name.toLowerCase().includes(search.toLowerCase()))
+              .map(t => (
+                <button
+                  key={t.id}
+                  className={`w-full text-left px-3 py-2 rounded mb-1 transition
+                    ${currentTool === t.id ? 'bg-indigo-100 text-indigo-700 font-semibold' : 'hover:bg-gray-100 text-gray-700'}`}
+                  onClick={() => setCurrentTool(t.id)}
+                >{t.name}</button>
+              ))}
+          </div>
+        </div>
+      ))}
+    </aside>
+  );
+}
+
+function CopyButton({ value, label = "Copy", className = "" }) {
+  const [copied, setCopied] = useState(false);
+  return (
+    <button
+      className={`ml-2 px-3 py-1 rounded bg-indigo-500 text-white hover:bg-indigo-600 transition text-sm ${className}`}
+      onClick={() => {
+        navigator.clipboard.writeText(value);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 1200);
+      }}
+      title={copied ? "Copied!" : "Copy to clipboard"}
+    >
+      {copied ? "Copied!" : label}
+    </button>
+  );
+}
+
+// ------------------ TOOL COMPONENTS ------------------
+
+// ----------- TEXT TOOLS ----------
+function WordCounter() {
+  const [input, setInput] = useState("");
+  const [stats, setStats] = useState({ words: 0, chars: 0, sentences: 0, paragraphs: 0, reading: "0s" });
+
+  useEffect(() => {
+    const chars = input.length;
+    const words = (input.match(/\b\S+\b/g) || []).length;
+    const sentences = (input.match(/[\w|\)][.?!](\s|$)/g) || []).length;
+    const paragraphs = input.split(/\n+/g).filter(p => p.trim()).length;
+    const reading = words ? `${Math.ceil(words/200)} min` : "0 min";
+    setStats({ words, chars, sentences, paragraphs, reading });
+  }, [input]);
+
+  return (
+    <div>
+      <h3 className="text-xl font-bold mb-2">Word Counter</h3>
+      <textarea
+        rows={6}
+        className="w-full border rounded p-2 mb-2"
+        placeholder="Type or paste text here..."
+        value={input}
+        onChange={e => setInput(e.target.value)}
+      />
+      <div className="grid grid-cols-2 gap-4 md:grid-cols-5">
+        <StatCard label="Words" value={stats.words} />
+        <StatCard label="Characters" value={stats.chars} />
+        <StatCard label="Sentences" value={stats.sentences} />
+        <StatCard label="Paragraphs" value={stats.paragraphs} />
+        <StatCard label="Reading Time" value={stats.reading} />
+      </div>
+    </div>
+  );
+}
+
+function StatCard({ label, value }) {
+  return (
+    <div className="bg-gray-100 rounded px-3 py-2 flex flex-col items-center">
+      <div className="font-bold text-lg">{value}</div>
+      <div className="text-xs text-gray-500">{label}</div>
+    </div>
+  );
+}
+
+function CharacterCounter() {
+  const [input, setInput] = useState("");
+  return (
+    <div>
+      <h3 className="text-xl font-bold mb-2">Character Counter</h3>
+      <textarea
+        rows={6}
+        className="w-full border rounded p-2 mb-2"
+        placeholder="Type or paste text..."
+        value={input}
+        onChange={e => setInput(e.target.value)}
+      />
+      <div className="flex items-center mb-2">
+        <span className="mr-2 font-semibold">Characters:</span>
+        <span className="text-lg">{input.length}</span>
+        <CopyButton value={input.length + ""} label="Copy Count" className="ml-2" />
+      </div>
+    </div>
+  );
+}
+
+function CaseConverter() {
+  const [input, setInput] = useState("");
+  const [output, setOutput] = useState("");
+  const [mode, setMode] = useState("upper");
+
+  useEffect(() => {
+    let out = "";
+    if (mode === "upper") out = input.toUpperCase();
+    else if (mode === "lower") out = input.toLowerCase();
+    else if (mode === "title") out = input.replace(/\w\S*/g, w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase());
+    else if (mode === "sentence") out = input.replace(/(^\s*\w|[.!?]\s*\w)/g, m => m.toUpperCase());
+    else if (mode === "alternating") out = Array.from(input).map((c,i) => i%2===0 ? c.toUpperCase() : c.toLowerCase()).join('');
+    setOutput(out);
+  }, [input, mode]);
+
+  return (
+    <div>
+      <h3 className="text-xl font-bold mb-2">Case Converter</h3>
+      <textarea rows={5} className="w-full border rounded p-2 mb-2" value={input}
+        placeholder="Type or paste text..." onChange={e => setInput(e.target.value)} />
+      <div className="mb-2 flex gap-2 flex-wrap">
+        {["upper", "lower", "title", "sentence", "alternating"].map(m => (
+          <button key={m}
+            className={`px-3 py-1 rounded ${mode === m ? "bg-indigo-500 text-white" : "bg-gray-100 hover:bg-gray-200 text-gray-700"}`}
+            onClick={() => setMode(m)}>{m.charAt(0).toUpperCase() + m.slice(1)}</button>
+        ))}
+      </div>
+      <div className="relative">
+        <textarea rows={5} className="w-full border rounded p-2 mb-2 bg-gray-50" value={output} readOnly />
+        <CopyButton value={output} />
+      </div>
+    </div>
+  );
+}
+
+function TextReverser() {
+  const [input, setInput] = useState("");
+  const [mode, setMode] = useState("text");
+  const [output, setOutput] = useState("");
+
+  useEffect(() => {
+    if (mode === "text") setOutput([...input].reverse().join(''));
+    else if (mode === "words") setOutput(input.split(/\s+/).reverse().join(' '));
+  }, [input, mode]);
+
+  return (
+    <div>
+      <h3 className="text-xl font-bold mb-2">Text Reverser</h3>
+      <textarea rows={5} className="w-full border rounded p-2 mb-2" value={input}
+        onChange={e => setInput(e.target.value)} placeholder="Type or paste text..." />
+      <div className="mb-2 flex gap-2">
+        <button className={`px-3 py-1 rounded ${mode === "text" ? "bg-indigo-500 text-white" : "bg-gray-100 hover:bg-gray-200"}`}
+          onClick={() => setMode("text")}>Reverse Text</button>
+        <button className={`px-3 py-1 rounded ${mode === "words" ? "bg-indigo-500 text-white" : "bg-gray-100 hover:bg-gray-200"}`}
+          onClick={() => setMode("words")}>Reverse Words</button>
+      </div>
+      <div className="relative">
+        <textarea rows={5} className="w-full border rounded p-2 mb-2 bg-gray-50" value={output} readOnly />
+        <CopyButton value={output} />
+      </div>
+    </div>
+  );
+}
+
+function LineSorter() {
+  const [input, setInput] = useState("");
+  const [mode, setMode] = useState("az");
+  const [output, setOutput] = useState("");
+
+  useEffect(() => {
+    let lines = input.split('\n');
+    if (mode === "az") lines = lines.slice().sort((a,b) => a.localeCompare(b));
+    else if (mode === "za") lines = lines.slice().sort((a,b) => b.localeCompare(a));
+    else if (mode === "shuffle") lines = lines.slice().sort(() => Math.random() - 0.5);
+    setOutput(lines.join('\n'));
+  }, [input, mode]);
+
+  return (
+    <div>
+      <h3 className="text-xl font-bold mb-2">Line Sorter</h3>
+      <textarea rows={5} className="w-full border rounded p-2 mb-2"
+        value={input} onChange={e => setInput(e.target.value)} placeholder="Enter lines..." />
+      <div className="mb-2 flex gap-2">
+        <button className={`px-3 py-1 rounded ${mode==="az"?"bg-indigo-500 text-white":"bg-gray-100 hover:bg-gray-200"}`} onClick={()=>setMode("az")}>A-Z</button>
+        <button className={`px-3 py-1 rounded ${mode==="za"?"bg-indigo-500 text-white":"bg-gray-100 hover:bg-gray-200"}`} onClick={()=>setMode("za")}>Z-A</button>
+        <button className={`px-3 py-1 rounded ${mode==="shuffle"?"bg-indigo-500 text-white":"bg-gray-100 hover:bg-gray-200"}`} onClick={()=>setMode("shuffle")}>Shuffle</button>
+      </div>
+      <div className="relative">
+        <textarea rows={5} className="w-full border rounded p-2 mb-2 bg-gray-50" value={output} readOnly />
+        <CopyButton value={output} />
+      </div>
+    </div>
+  );
+}
+
+function DuplicateLineRemover() {
+  const [input, setInput] = useState("");
+  const [output, setOutput] = useState("");
+  useEffect(() => {
+    const lines = input.split('\n');
+    const uniqueLines = [...new Set(lines)];
+    setOutput(uniqueLines.join('\n'));
+  }, [input]);
+  return (
+    <div>
+      <h3 className="text-xl font-bold mb-2">Duplicate Line Remover</h3>
+      <textarea rows={6} className="w-full border rounded p-2 mb-2"
+        value={input} onChange={e => setInput(e.target.value)} placeholder="Enter lines..." />
+      <div className="relative">
+        <textarea rows={6} className="w-full border rounded p-2 mb-2 bg-gray-50" value={output} readOnly />
+        <CopyButton value={output} />
+      </div>
+    </div>
+  );
+}
+
+// ----------- PDF TOOLS ----------
+function PdfMerge() {
+  const [files, setFiles] = useState([]);
+  const [outputUrl, setOutputUrl] = useState("");
+
+  async function handleMerge() {
+    if (files.length < 2) return alert("Select at least 2 PDFs to merge");
+    const pdfLib = window.PDFLib;
+    const mergedPdf = await pdfLib.PDFDocument.create();
+    for (let f of files) {
+      const arrayBuffer = await f.arrayBuffer();
+      const pdf = await pdfLib.PDFDocument.load(arrayBuffer);
+      const copiedPages = await mergedPdf.copyPages(pdf, pdf.getPageIndices());
+      copiedPages.forEach(page => mergedPdf.addPage(page));
+    }
+    const bytes = await mergedPdf.save();
+    setOutputUrl(URL.createObjectURL(new Blob([bytes], { type: "application/pdf" })));
+  }
+
+  return (
+    <div>
+      <h3 className="text-xl font-bold mb-2">Merge PDF</h3>
+      <input type="file" accept="application/pdf" multiple
+        className="mb-2"
+        onChange={e => setFiles(Array.from(e.target.files))}
+      />
+      <button className="px-3 py-2 bg-indigo-500 rounded text-white hover:bg-indigo-600"
+        onClick={handleMerge}>Merge PDFs</button>
+      {outputUrl &&
+        <div className="mt-3">
+          <a href={outputUrl} download="merged.pdf"
+            className="bg-green-500 text-white px-3 py-2 rounded hover:bg-green-600">Download Merged PDF</a>
+        </div>
+      }
+    </div>
+  );
+}
+
+function PdfSplit() {
+  const [file, setFile] = useState(null);
+  const [pages, setPages] = useState("");
+  const [outputUrls, setOutputUrls] = useState([]);
+
+  async function handleSplit() {
+    if (!file || !pages) return alert("Upload a PDF and specify pages");
+    const pdfLib = window.PDFLib;
+    const arrayBuffer = await file.arrayBuffer();
+    const pdfDoc = await pdfLib.PDFDocument.load(arrayBuffer);
+    const indices = pages.split(',').map(p => Number(p.trim())-1).filter(p => p >= 0 && p < pdfDoc.getPageCount());
+    if (indices.length === 0) return alert("Invalid page numbers");
+    const urls = [];
+    for (let idx of indices) {
+      const newPdf = await pdfLib.PDFDocument.create();
+      const [copiedPage] = await newPdf.copyPages(pdfDoc, [idx]);
+      newPdf.addPage(copiedPage);
+      const bytes = await newPdf.save();
+      urls.push(URL.createObjectURL(new Blob([bytes], { type: "application/pdf" })));
+    }
+    setOutputUrls(urls);
+  }
+
+  return (
+    <div>
+      <h3 className="text-xl font-bold mb-2">Split PDF</h3>
+      <input type="file" accept="application/pdf" className="mb-2"
+        onChange={e => setFile(e.target.files[0])} />
+      <input type="text"
+        className="border rounded px-2 py-1 mb-2 ml-2"
+        placeholder="Pages (e.g. 1,3,5)"
+        value={pages}
+        onChange={e => setPages(e.target.value)}
+      />
+      <button className="px-3 py-2 bg-indigo-500 rounded text-white hover:bg-indigo-600"
+        onClick={handleSplit}>Split PDF</button>
+      <div className="mt-3 flex gap-2 flex-wrap">
+        {outputUrls.map((url,i) =>
+          <a key={i} href={url} download={`split_page${i+1}.pdf`}
+            className="bg-green-500 text-white px-3 py-2 rounded hover:bg-green-600">Page {i+1}</a>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function PdfConvert() {
+  const [file, setFile] = useState(null);
+  const [mode, setMode] = useState("image");
+  const [outputUrl, setOutputUrl] = useState(null);
+
+  // For full PDF to Word/Excel conversion client-side, it's limited; so we support PDF to image for preview
+  // PDF to Word/Excel is best done server-side, but we provide PDF to image for client-side
+  async function handleConvert() {
+    if (!file) return alert("Upload a PDF file");
+    if (mode === "image") {
+      // Use PDF.js for rendering (but not loaded here)
+      alert("PDF to Image works best with server-side tools. Here, we'll extract first page as image (PNG) using canvas.");
+      const url = URL.createObjectURL(file);
+      setOutputUrl(url); // Just a preview as fallback
+    }
+    else {
+      alert("PDF to Word/Excel conversion is not supported fully client-side. Please use a desktop app for best results.");
+    }
+  }
+
+  return (
+    <div>
+      <h3 className="text-xl font-bold mb-2">Convert PDF</h3>
+      <input type="file" accept="application/pdf" className="mb-2"
+        onChange={e => setFile(e.target.files[0])} />
+      <select className="border rounded px-2 py-1 ml-2 mb-2"
+        value={mode} onChange={e => setMode(e.target.value)}>
+        <option value="word">PDF to Word</option>
+        <option value="excel">PDF to Excel</option>
+        <option value="image">PDF to Image</option>
+      </select>
+      <button className="px-3 py-2 bg-indigo-500 rounded text-white hover:bg-indigo-600"
+        onClick={handleConvert}>Convert</button>
+      {outputUrl &&
+        <div className="mt-3">
+          <a href={outputUrl} download="converted.pdf"
+            className="bg-green-500 text-white px-3 py-2 rounded hover:bg-green-600">Download Output</a>
+        </div>
+      }
+    </div>
+  );
+}
+
+// ----------- IMAGE TOOLS ----------
+function ImageResizer() {
+  const [file, setFile] = useState(null);
+  const [width, setWidth] = useState("");
+  const [height, setHeight] = useState("");
+  const [outputUrl, setOutputUrl] = useState("");
+
+  async function handleResize() {
+    if (!file) return alert("Upload an image");
+    const img = new Image();
+    img.src = URL.createObjectURL(file);
+    img.onload = () => {
+      const w = width ? parseInt(width) : img.width;
+      const h = height ? parseInt(height) : img.height;
+      const canvas = document.createElement('canvas');
+      canvas.width = w;
+      canvas.height = h;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0, w, h);
+      canvas.toBlob(blob => {
+        setOutputUrl(URL.createObjectURL(blob));
+      }, "image/png");
+    };
+  }
+
+  return (
+    <div>
+      <h3 className="text-xl font-bold mb-2">Image Resizer</h3>
+      <input type="file" accept="image/*" className="mb-2"
+        onChange={e => setFile(e.target.files[0])} />
+      <input type="number" min="1" className="border rounded px-2 py-1 ml-2 mb-2" placeholder="Width"
+        value={width} onChange={e => setWidth(e.target.value)} />
+      <input type="number" min="1" className="border rounded px-2 py-1 ml-2 mb-2" placeholder="Height"
+        value={height} onChange={e => setHeight(e.target.value)} />
+      <button className="px-3 py-2 bg-indigo-500 rounded text-white hover:bg-indigo-600"
+        onClick={handleResize}>Resize</button>
+      {outputUrl &&
+        <div className="mt-3">
+          <img src={outputUrl} alt="Resized" className="max-w-full mb-2 border rounded" />
+          <a href={outputUrl} download="resized.png"
+            className="bg-green-500 text-white px-3 py-2 rounded hover:bg-green-600">Download</a>
+        </div>
+      }
+    </div>
+  );
+}
+
+function ImageCompressor() {
+  const [file, setFile] = useState(null);
+  const [quality, setQuality] = useState(0.7);
+  const [outputUrl, setOutputUrl] = useState("");
+
+  async function handleCompress() {
+    if (!file) return alert("Upload an image");
+    const imageCompression = window.imageCompression;
+    const compressedFile = await imageCompression(file, { maxSizeMB: 1, maxWidthOrHeight: 1920, initialQuality: quality });
+    setOutputUrl(URL.createObjectURL(compressedFile));
+  }
+
+  return (
+    <div>
+      <h3 className="text-xl font-bold mb-2">Image Compressor</h3>
+      <input type="file" accept="image/*" className="mb-2"
+        onChange={e => setFile(e.target.files[0])} />
+      <input type="range" min="0.1" max="1" step="0.05"
+        value={quality} onChange={e => setQuality(Number(e.target.value))}
+        className="w-32 ml-2 mb-2" />
+      <span className="ml-2">{Math.round(quality*100)}%</span>
+      <button className="px-3 py-2 bg-indigo-500 rounded text-white hover:bg-indigo-600 ml-2"
+        onClick={handleCompress}>Compress</button>
+      {outputUrl &&
+        <div className="mt-3">
+          <img src={outputUrl} alt="Compressed" className="max-w-full mb-2 border rounded" />
+          <a href={outputUrl} download="compressed.png"
+            className="bg-green-500 text-white px-3 py-2 rounded hover:bg-green-600">Download</a>
+        </div>
+      }
+    </div>
+  );
+}
+
+function BackgroundRemover() {
+  // For full background removal, it's best done server-side; here we offer a basic mask using threshold
+  const [file, setFile] = useState(null);
+  const [outputUrl, setOutputUrl] = useState("");
+
+  function handleRemove() {
+    if (!file) return alert("Upload an image");
+    const img = new Image();
+    img.src = URL.createObjectURL(file);
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      canvas.width = img.width;
+      canvas.height = img.height;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0);
+      const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      // Make white (or near-white) pixels transparent
+      for (let i = 0; i < imageData.data.length; i += 4) {
+        if (imageData.data[i] > 240 && imageData.data[i+1] > 240 && imageData.data[i+2] > 240)
+          imageData.data[i+3] = 0;
+      }
+      ctx.putImageData(imageData, 0, 0);
+      canvas.toBlob(blob => {
+        setOutputUrl(URL.createObjectURL(blob));
+      }, "image/png");
+    };
+  }
+
+  return (
+    <div>
+      <h3 className="text-xl font-bold mb-2">Background Remover</h3>
+      <input type="file" accept="image/*" className="mb-2"
+        onChange={e => setFile(e.target.files[0])} />
+      <button className="px-3 py-2 bg-indigo-500 rounded text-white hover:bg-indigo-600"
+        onClick={handleRemove}>Remove Background</button>
+      {outputUrl &&
+        <div className="mt-3">
+          <img src={outputUrl} alt="No Background" className="max-w-full mb-2 border rounded bg-white" />
+          <a href={outputUrl} download="nobg.png"
+            className="bg-green-500 text-white px-3 py-2 rounded hover:bg-green-600">Download</a>
+        </div>
+      }
+    </div>
+  );
+}
+
+function ImageFilters() {
+  const [file, setFile] = useState(null);
+  const [filter, setFilter] = useState("none");
+  const [outputUrl, setOutputUrl] = useState("");
+  const [origUrl, setOrigUrl] = useState("");
+
+  function handleFilter() {
+    if (!file) return alert("Upload an image");
+    const img = new Image();
+    img.src = URL.createObjectURL(file);
+    img.onload = () => {
+      setOrigUrl(img.src);
+      const canvas = document.createElement('canvas');
+      canvas.width = img.width;
+      canvas.height = img.height;
+      const ctx = canvas.getContext('2d');
+      ctx.filter = filter;
+      ctx.drawImage(img, 0, 0);
+      canvas.toBlob(blob => {
+        setOutputUrl(URL.createObjectURL(blob));
+      }, "image/png");
+    };
+  }
+
+  return (
+    <div>
+      <h3 className="text-xl font-bold mb-2">Image Filters</h3>
+      <input type="file" accept="image/*" className="mb-2"
+        onChange={e => setFile(e.target.files[0])} />
+      <select className="border rounded px-2 py-1 ml-2 mb-2"
+        value={filter} onChange={e => setFilter(e.target.value)}>
+        <option value="none">None</option>
+        <option value="grayscale(100%)">Grayscale</option>
+        <option value="sepia(100%)">Sepia</option>
+        <option value="invert(100%)">Invert</option>
+        <option value="brightness(150%)">Brighten</option>
+        <option value="contrast(200%)">High Contrast</option>
+        <option value="blur(4px)">Blur</option>
+      </select>
+      <button className="px-3 py-2 bg-indigo-500 rounded text-white hover:bg-indigo-600"
+        onClick={handleFilter}>Apply Filter</button>
+      <div className="mt-3 flex gap-2 flex-wrap">
+        {origUrl && <img src={origUrl} alt="Original" className="max-h-32 border rounded" />}
+        {outputUrl && <img src={outputUrl} alt="Filtered" className="max-h-32 border rounded" />}
+      </div>
+      {outputUrl &&
+        <a href={outputUrl} download="filtered.png"
+          className="bg-green-500 text-white px-3 py-2 rounded hover:bg-green-600 mt-2 inline-block">Download</a>
+      }
+    </div>
+  );
+}
+
+// ----------- CALCULATORS ----------
+function AgeCalculator() {
+  const [dob, setDob] = useState("");
+  const [age, setAge] = useState("");
+
+  useEffect(() => {
+    if (dob) {
+      const birth = new Date(dob);
+      const now = new Date();
+      let years = now.getFullYear() - birth.getFullYear();
+      let months = now.getMonth() - birth.getMonth();
+      let days = now.getDate() - birth.getDate();
+      if (days < 0) { months--; days += 30; }
+      if (months < 0) { years--; months += 12; }
+      setAge(`${years} years, ${months} months, ${days} days`);
+    } else setAge("");
+  }, [dob]);
+
+  return (
+    <div>
+      <h3 className="text-xl font-bold mb-2">Age Calculator</h3>
+      <input type="date" className="border rounded px-2 py-1 mb-2"
+        value={dob} onChange={e => setDob(e.target.value)} />
+      {age && <div className="mt-2 font-semibold">Age: {age}</div>}
+    </div>
+  );
+}
+
+function BmiCalculator() {
+  const [height, setHeight] = useState(""); // cm
+  const [weight, setWeight] = useState(""); // kg
+  const [bmi, setBmi] = useState("");
+  const [status, setStatus] = useState("");
+
+  useEffect(() => {
+    if (height && weight) {
+      const h = parseFloat(height)/100;
+      const w = parseFloat(weight);
+      const result = w/(h*h);
+      setBmi(result.toFixed(2));
+      let st = "";
+      if (result < 18.5) st = "Underweight";
+      else if (result < 24.9) st = "Normal";
+      else if (result < 30) st = "Overweight";
+      else st = "Obese";
+      setStatus(st);
+    } else { setBmi(""); setStatus(""); }
+  }, [height, weight]);
+
+  return (
+    <div>
+      <h3 className="text-xl font-bold mb-2">BMI Calculator</h3>
+      <input type="number" className="border rounded px-2 py-1 mb-2" placeholder="Height (cm)"
+        value={height} onChange={e => setHeight(e.target.value)} />
+      <input type="number" className="border rounded px-2 py-1 ml-2 mb-2" placeholder="Weight (kg)"
+        value={weight} onChange={e => setWeight(e.target.value)} />
+      {bmi && <div className="mt-2 font-semibold">BMI: {bmi} ({status})</div>}
+    </div>
+  );
+}
+
+function LoanCalculator() {
+  const [amount, setAmount] = useState("");
+  const [rate, setRate] = useState("");
+  const [years, setYears] = useState("");
+  const [monthly, setMonthly] = useState("");
+  useEffect(() => {
+    if (amount && rate && years) {
+      const P = parseFloat(amount);
+      const r = parseFloat(rate)/100/12;
+      const n = parseFloat(years)*12;
+      const M = (P*r) / (1 - Math.pow(1+r, -n));
+      setMonthly(M ? M.toFixed(2) : "");
+    } else setMonthly("");
+  }, [amount, rate, years]);
+  return (
+    <div>
+      <h3 className="text-xl font-bold mb-2">Loan Calculator</h3>
+      <input type="number" className="border rounded px-2 py-1 mb-2" placeholder="Amount"
+        value={amount} onChange={e => setAmount(e.target.value)} />
+      <input type="number" className="border rounded px-2 py-1 ml-2 mb-2" placeholder="Interest rate (%)"
+        value={rate} onChange={e => setRate(e.target.value)} />
+      <input type="number" className="border rounded px-2 py-1 ml-2 mb-2" placeholder="Years"
+        value={years} onChange={e => setYears(e.target.value)} />
+      {monthly && <div className="mt-2 font-semibold">Monthly Payment: ${monthly}</div>}
+    </div>
+  );
+}
+
+function PercentageCalculator() {
+  const [total, setTotal] = useState("");
+  const [percent, setPercent] = useState("");
+  const [result, setResult] = useState("");
+  useEffect(() => {
+    if (total && percent) {
+      setResult((parseFloat(total)*parseFloat(percent)/100).toFixed(2));
+    } else setResult("");
+  }, [total, percent]);
+  return (
+    <div>
+      <h3 className="text-xl font-bold mb-2">Percentage Calculator</h3>
+      <input type="number" className="border rounded px-2 py-1 mb-2" placeholder="Total"
+        value={total} onChange={e => setTotal(e.target.value)} />
+      <input type="number" className="border rounded px-2 py-1 ml-2 mb-2" placeholder="Percent (%)"
+        value={percent} onChange={e => setPercent(e.target.value)} />
+      {result && <div className="mt-2 font-semibold">{percent}% of {total} = {result}</div>}
+    </div>
+  );
+}
+
+function DiscountCalculator() {
+  const [price, setPrice] = useState("");
+  const [discount, setDiscount] = useState("");
+  const [result, setResult] = useState("");
+  useEffect(() => {
+    if (price && discount) {
+      setResult((parseFloat(price) - parseFloat(price)*parseFloat(discount)/100).toFixed(2));
+    } else setResult("");
+  }, [price, discount]);
+  return (
+    <div>
+      <h3 className="text-xl font-bold mb-2">Discount Calculator</h3>
+      <input type="number" className="border rounded px-2 py-1 mb-2" placeholder="Price"
+        value={price} onChange={e => setPrice(e.target.value)} />
+      <input type="number" className="border rounded px-2 py-1 ml-2 mb-2" placeholder="Discount (%)"
+        value={discount} onChange={e => setDiscount(e.target.value)} />
+      {result && <div className="mt-2 font-semibold">Final Price: ${result}</div>}
+    </div>
+  );
+}
+
+function TipCalculator() {
+  const [amount, setAmount] = useState("");
+  const [tip, setTip] = useState("");
+  const [result, setResult] = useState("");
+  useEffect(() => {
+    if (amount && tip) {
+      setResult((parseFloat(amount)*parseFloat(tip)/100).toFixed(2));
+    } else setResult("");
+  }, [amount, tip]);
+  return (
+    <div>
+      <h3 className="text-xl font-bold mb-2">Tip Calculator</h3>
+      <input type="number" className="border rounded px-2 py-1 mb-2" placeholder="Bill Amount"
+        value={amount} onChange={e => setAmount(e.target.value)} />
+      <input type="number" className="border rounded px-2 py-1 ml-2 mb-2" placeholder="Tip (%)"
+        value={tip} onChange={e => setTip(e.target.value)} />
+      {result && <div className="mt-2 font-semibold">Tip: ${result}</div>}
+    </div>
+  );
+}
+
+// ----------- WEB TOOLS ----------
+function QrCodeGenerator() {
+  const [input, setInput] = useState("");
+  const [qrUrl, setQrUrl] = useState("");
+  const qrRef = useRef();
+
+  useEffect(() => {
+    if (input) {
+      // Use qr-code-styling
+      const qrCode = new window.QRCodeStyling({
+        width: 220,
+        height: 220,
+        data: input,
+        dotsOptions: { color: "#6366f1", type: "rounded" },
+        backgroundOptions: { color: "#f3f4f6" },
+      });
+      qrRef.current.innerHTML = "";
+      qrCode.append(qrRef.current);
+      qrCode.getRawData("png").then(blob => {
+        setQrUrl(URL.createObjectURL(blob));
+      });
+    }
+  }, [input]);
+
+  return (
+    <div>
+      <h3 className="text-xl font-bold mb-2">QR Code Generator</h3>
+      <input type="text" className="w-full border rounded p-2 mb-2"
+        placeholder="Enter text or URL..." value={input}
+        onChange={e => setInput(e.target.value)} />
+      <div ref={qrRef} className="mb-2"></div>
+      {qrUrl &&
+        <a href={qrUrl} download="qrcode.png"
+          className="bg-green-500 text-white px-3 py-2 rounded hover:bg-green-600">Download QR</a>
+      }
+    </div>
+  );
+}
+
+function PasswordGenerator() {
+  const [length, setLength] = useState(12);
+  const [upper, setUpper] = useState(true);
+  const [lower, setLower] = useState(true);
+  const [digits, setDigits] = useState(true);
+  const [special, setSpecial] = useState(true);
+  const [password, setPassword] = useState("");
+
+  function generate() {
+    let chars = "";
+    if (upper) chars += "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+    if (lower) chars += "abcdefghijklmnopqrstuvwxyz";
+    if (digits) chars += "0123456789";
+    if (special) chars += "!@#$%^&*()_+-=<>?";
+    let pass = "";
+    for (let i = 0; i < length; i++) {
+      pass += chars[Math.floor(Math.random() * chars.length)];
+    }
+    setPassword(pass);
+  }
+
+  return (
+    <div>
+      <h3 className="text-xl font-bold mb-2">Password Generator</h3>
+      <div className="mb-2 flex flex-wrap gap-2 items-center">
+        <input type="number" min="4" max="40" className="border rounded px-2 py-1"
+          value={length} onChange={e => setLength(e.target.value)} />
+        <label><input type="checkbox" checked={upper} onChange={e=>setUpper(e.target.checked)} /> Uppercase</label>
+        <label><input type="checkbox" checked={lower} onChange={e=>setLower(e.target.checked)} /> Lowercase</label>
+        <label><input type="checkbox" checked={digits} onChange={e=>setDigits(e.target.checked)} /> Digits</label>
+        <label><input type="checkbox" checked={special} onChange={e=>setSpecial(e.target.checked)} /> Special</label>
+        <button className="px-3 py-1 bg-indigo-500 text-white rounded hover:bg-indigo-600"
+          onClick={generate}>Generate</button>
+      </div>
+      <div className="relative">
+        <input type="text" value={password} readOnly className="w-full border rounded p-2 mb-2 bg-gray-50" />
+        <CopyButton value={password} />
+      </div>
+    </div>
+  );
+}
+
+function MetaTagsGenerator() {
+  const [title, setTitle] = useState("");
+  const [desc, setDesc] = useState("");
+  const [url, setUrl] = useState("");
+  const [tags, setTags] = useState("");
+
+  useEffect(() => {
+    const out =
+      `<title>${title}</title>\n` +
+      `<meta name="description" content="${desc}">\n` +
+      `<meta property="og:title" content="${title}">\n` +
+      `<meta property="og:description" content="${desc}">\n` +
+      `<meta property="og:url" content="${url}">\n` +
+      `<meta name="twitter:card" content="summary_large_image">\n`;
+    setTags(out);
+  }, [title, desc, url]);
+
+  return (
+    <div>
+      <h3 className="text-xl font-bold mb-2">Meta Tags Generator</h3>
+      <input type="text" className="border rounded px-2 py-1 mb-2 w-full" placeholder="Title"
+        value={title} onChange={e=>setTitle(e.target.value)} />
+      <input type="text" className="border rounded px-2 py-1 mb-2 w-full" placeholder="Description"
+        value={desc} onChange={e=>setDesc(e.target.value)} />
+      <input type="text" className="border rounded px-2 py-1 mb-2 w-full" placeholder="URL"
+        value={url} onChange={e=>setUrl(e.target.value)} />
+      <div className="relative">
+        <textarea rows={6} className="w-full border rounded p-2 mb-2 bg-gray-50" value={tags} readOnly />
+        <CopyButton value={tags} />
+      </div>
+    </div>
+  );
+}
+
+function UrlEncoderDecoder() {
+  const [input, setInput] = useState("");
+  const [output, setOutput] = useState("");
+  const [mode, setMode] = useState("encode");
+
+  useEffect(() => {
+    if (mode === "encode") setOutput(encodeURIComponent(input));
+    else setOutput(decodeURIComponent(input));
+  }, [input, mode]);
+
+  return (
+    <div>
+      <h3 className="text-xl font-bold mb-2">URL Encoder/Decoder</h3>
+      <textarea rows={4} className="w-full border rounded p-2 mb-2"
+        value={input} onChange={e=>setInput(e.target.value)} placeholder="Enter text..." />
+      <div className="mb-2 flex gap-2">
+        <button className={`px-3 py-1 rounded ${mode==="encode"?"bg-indigo-500 text-white":"bg-gray-100 hover:bg-gray-200"}`} onClick={()=>setMode("encode")}>Encode</button>
+        <button className={`px-3 py-1 rounded ${mode==="decode"?"bg-indigo-500 text-white":"bg-gray-100 hover:bg-gray-200"}`} onClick={()=>setMode("decode")}>Decode</button>
+      </div>
+      <div className="relative">
+        <textarea rows={4} className="w-full border rounded p-2 mb-2 bg-gray-50" value={output} readOnly />
+        <CopyButton value={output} />
+      </div>
+    </div>
+  );
+}
+
+function Base64EncoderDecoder() {
+  const [input, setInput] = useState("");
+  const [output, setOutput] = useState("");
+  const [mode, setMode] = useState("encode");
+
+  useEffect(() => {
+    try {
+      if (mode === "encode") setOutput(btoa(unescape(encodeURIComponent(input))));
+      else setOutput(decodeURIComponent(escape(atob(input))));
+    } catch {
+      setOutput("Invalid input");
+    }
+  }, [input, mode]);
+
+  return (
+    <div>
+      <h3 className="text-xl font-bold mb-2">Base64 Encoder/Decoder</h3>
+      <textarea rows={4} className="w-full border rounded p-2 mb-2"
+        value={input} onChange={e=>setInput(e.target.value)} placeholder="Enter text..." />
+      <div className="mb-2 flex gap-2">
+        <button className={`px-3 py-1 rounded ${mode==="encode"?"bg-indigo-500 text-white":"bg-gray-100 hover:bg-gray-200"}`} onClick={()=>setMode("encode")}>Encode</button>
+        <button className={`px-3 py-1 rounded ${mode==="decode"?"bg-indigo-500 text-white":"bg-gray-100 hover:bg-gray-200"}`} onClick={()=>setMode("decode")}>Decode</button>
+      </div>
+      <div className="relative">
+        <textarea rows={4} className="w-full border rounded p-2 mb-2 bg-gray-50" value={output} readOnly />
+        <CopyButton value={output} />
+      </div>
+    </div>
+  );
+}
+
+function JsonFormatter() {
+  const [input, setInput] = useState("");
+  const [output, setOutput] = useState("");
+  useEffect(() => {
+    try {
+      setOutput(input ? JSON.stringify(JSON.parse(input), null, 2) : "");
+    } catch {
+      setOutput("Invalid JSON");
+    }
+  }, [input]);
+  return (
+    <div>
+      <h3 className="text-xl font-bold mb-2">JSON Formatter</h3>
+      <textarea rows={6} className="w-full border rounded p-2 mb-2"
+        value={input} onChange={e=>setInput(e.target.value)} placeholder="Paste JSON..." />
+      <div className="relative">
+        <textarea rows={6} className="w-full border rounded p-2 mb-2 bg-gray-50" value={output} readOnly />
+        <CopyButton value={output} />
+      </div>
+    </div>
+  );
+}
+
+// ----------- CONVERTERS ----------
+function UnitConverter() {
+  const categories = ["Length", "Weight", "Temperature", "Volume", "Speed", "Currency"];
+  const units = {
+    Length: ["Meter","Kilometer","Centimeter","Millimeter","Mile","Yard","Foot","Inch"],
+    Weight: ["Kilogram","Gram","Milligram","Pound","Ounce"],
+    Temperature: ["Celsius","Fahrenheit","Kelvin"],
+    Volume: ["Liter","Milliliter","Gallon","Quart","Pint","Cup","Fluid Ounce"],
+    Speed: ["Km/h","Mile/h","Meter/s"],
+    Currency: ["USD","EUR","GBP","JPY"] // static rates
+  };
+  const rates = {
+    USD: { USD:1, EUR:0.93, GBP:0.8, JPY:149 },
+    EUR: { USD:1.07, EUR:1, GBP:0.86, JPY:160 },
+    GBP: { USD:1.25, EUR:1.16, GBP:1, JPY:186 },
+    JPY: { USD:0.0067, EUR:0.0062, GBP:0.0054, JPY:1 }
+  };
+
+  const [cat, setCat] = useState("Length");
+  const [from, setFrom] = useState(units[cat][0]);
+  const [to, setTo] = useState(units[cat][1]);
+  const [value, setValue] = useState("");
+  const [result, setResult] = useState("");
+
+  useEffect(() => {
+    setFrom(units[cat][0]);
+    setTo(units[cat][1]);
+    setValue("");
+    setResult("");
+  }, [cat]);
+
+  useEffect(() => {
+    if (!value) return setResult("");
+    let num = parseFloat(value);
+    let res = num;
+    // Conversion logic
+    if (cat === "Length") {
+      const factors = { Meter:1, Kilometer:1000, Centimeter:0.01, Millimeter:0.001, Mile:1609.34, Yard:0.9144, Foot:0.3048, Inch:0.0254 };
+      res = num * factors[from] / factors[to];
+    } else if (cat === "Weight") {
+      const factors = { Kilogram:1, Gram:0.001, Milligram:0.000001, Pound:0.453592, Ounce:0.0283495 };
+      res = num * factors[from] / factors[to];
+    } else if (cat === "Temperature") {
+      if (from === "Celsius") {
+        if (to === "Fahrenheit") res = num*9/5+32;
+        else if (to === "Kelvin") res = num+273.15;
+        else res = num;
+      } else if (from === "Fahrenheit") {
+        if (to === "Celsius") res = (num-32)*5/9;
+        else if (to === "Kelvin") res = (num-32)*5/9+273.15;
+        else res = num;
+      } else if (from === "Kelvin") {
+        if (to === "Celsius") res = num-273.15;
+        else if (to === "Fahrenheit") res = (num-273.15)*9/5+32;
+        else res = num;
+      }
+    } else if (cat === "Volume") {
+      const factors = { Liter:1, Milliliter:0.001, Gallon:3.78541, Quart:0.946353, Pint:0.473176, Cup:0.24, "Fluid Ounce":0.0295735 };
+      res = num * factors[from] / factors[to];
+    } else if (cat === "Speed") {
+      const factors = { "Km/h":1, "Mile/h":1.60934, "Meter/s":3.6 };
+      res = num * factors[from] / factors[to];
+    } else if (cat === "Currency") {
+      res = num * rates[from][to];
+    }
+    setResult(res ? res.toFixed(4) : "");
+ 
